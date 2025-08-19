@@ -62,12 +62,15 @@ function makeVideoTrial(filename){
   return {
     type: jsPsychHtmlKeyboardResponse,
     stimulus: `
-      <video id="stimVid" width="800" autoplay>
-        <source src="${base_url + filename}" type="video/webm">
-      </video>
-      <p>Hold <b>F</b> if you think the ball will go to RED,<br>
-         Hold <b>J</b> if you think it will go to GREEN.</p>
-    `,
+  <div style="text-align:center;">
+    <video id="stimVid" style="width:60%; max-width:600px;" autoplay>
+      <source src="${base_url + filename}" type="video/webm">
+    </video>
+    <p>Hold <b>F</b> if you think the ball will touch RED area first,<br>
+       Hold <b>J</b> if you think it will touch GREEN area first.</p>
+  </div>
+  
+`,
     choices: "NO_KEYS",
     trial_duration: null,
     on_load: function(){
