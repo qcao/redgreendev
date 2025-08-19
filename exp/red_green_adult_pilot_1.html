@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>jsPsych + WebGazer Multi-video Task</title>
+  <script src="https://unpkg.com/jspsych@7.3.0"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-preload"></script>
+  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.0/css/jspsych.css">
+</head>
+<body></body>
+<script>
+
+// ----------------------
+// Init WebGazer
+// ----------------------
+webgazer.setRegression('ridge')
+        .setTracker('clmtrackr')
+        .begin();
+
+webgazer.showVideoPreview(false).showPredictionPoints(false);
+
+// ----------------------
+// Init jsPsych
+// ----------------------
+const jsPsych = initJsPsych({
+  on_finish: function() {
+    jsPsych.data.displayData(); // show at end
+  }
+});
+
+// ----------------------
+// Video list from GitHub
+// ----------------------
+const base_url = "https://qcao.github.io/redgreendev/materials/videos/";
+const video_files = [
+  "solidity_exp_1.webm",
+  "solidity_unexp_1.webm",
+  "gravity_exp_1.webm",
+  "gravity_unexp_1.webm"
+  // add more here
+];
+
+// ----------------------
+// Key + gaze tracking
+// ----------------------
+let keyState = {f: false, j: false};
+let gazeData = [];
+
+document.addEventListener('keydown', function(e){
+  if (e.key === 'f') keyState.f = true;
+  if (e.key === 'j') keyState.j = true;
+});
+document.addEventListener('keyup', function(e){
+  if (e.key === 'f') keyState.f = false;
+  if (e.key === 'j') keyState.j = false;
+});
+
+// ----------------------
+// Factory function for trials
+// ----------------------
+function makeVideoTrial(filename){
+  return {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `
+      <video id="stimVid" width="800" autoplay>
+        <source src="${base_url + filename}" type="video/webm">
+      </video>
+      <p>Hold <b>F</b> if you think the ball will go to RED,<br>
+         Hold <b>J</b> if you think it will go to GREEN.</p>
+    `,
+    choices: "NO_KEYS",
+    trial_duration: null,
+    on_load: function(){
+      gazeData = [];
+      let video = document.getElementById('stimVid');
+
+      // Start sampling gaze every 50 ms
+      let sampler = setInterval(function(){
+        let gaze = webgazer.getCurrentPrediction();
+        let t = performance.now();
+        if (gaze){
+          gazeData.push({
+            time: t,
+            x: gaze.x,
+            y: gaze.y,
+            keyF: keyState.f,
+            keyJ: keyState.j
+          });
+        } else {
+          gazeData.push({
+            time: t,
+            x: null,
+            y: null,
+            keyF: keyState.f,
+            keyJ: keyState.j
+          });
+        }
+      }, 50);
+
+      // End trial when video finishes
+      video.onended = function(){
+        clearInterval(sampler);
+        jsPsych.finishTrial({
+          video: filename,
+          gaze_series: gazeData
+        });
+      };
+    }
+  };
+}
+
+// ----------------------
+// Build timeline
+// ----------------------
+let timeline = [];
+
+video_files.forEach(v => {
+  timeline.push(makeVideoTrial(v));
+});
+
+// ----------------------
+// Run
+// ----------------------
+jsPsych.run(timeline);
+
+</script>
+</html>
